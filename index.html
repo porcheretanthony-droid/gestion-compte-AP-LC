@@ -397,20 +397,55 @@ function saveNames(){data.names.u1=(document.getElementById('n1').value||'Utilis
 function logOp(a,t,i,v){let amount=N(v);if(!amount)return;let kind=t==='income'?'Revenu':t==='annual'?'Dépense annuelle':t==='variable'?'Dépense variable':'Dépense';let label=data[a][t][i]?.[0]||kind;data.operations.unshift({date:new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'}),account:title(a),kind,label,amount});data.operations=data.operations.slice(0,40)}
 function setFlag(a,t,i,k,v){if(!data[a][t][i][2]||typeof data[a][t][i][2]!=='object')data[a][t][i][2]={};data[a][t][i][2][k]=v;save();render()}function resetVariables(a){let n=0;(data[a].variable||[]).forEach(x=>{if(flag(x,'resetZero')){x[1]='0';n++}});save();toast(n?n+' variable(s) remise(s) à 0':'Aucune variable cochée');render()}function edit(a,t,i,k,v){data[a][t][i][k]=v;if(k===1)logOp(a,t,i,v);save();render()}function add(a,t){let labels={income:'Nouveau revenu',expense:'Nouvelle dépense',variable:'Nouvelle dépense variable',annual:'Nouvelle dépense annuelle'};data[a][t].push([labels[t],'0']);save();render()}function del(a,t,i){data[a][t].splice(i,1);save();render()}function resetAll(){if(confirm('Remettre tous les comptes à zéro ?')){data=fresh();save();toast('Comptes remis à zéro');render()}}function clearHistory(){if(confirm("Effacer l'historique des opérations et du graphique ?")){data.operations=[];data.history={};save();render()}}
 function openNewExpense(){document.getElementById('choices').innerHTML=['u1','u2','common'].map(a=>`<button class="choice" onclick="newExpense('${a}')">${esc(title(a))}</button>`).join('');document.getElementById('modal').classList.add('on')}function closeModal(){document.getElementById('modal').classList.remove('on')}function newExpense(a){closeModal();accountTab[a]='expense';data[a].expense.push(['Nouvelle dépense','0']);save();go(a);setTimeout(()=>{let p=document.getElementById(a);let inputs=p.querySelectorAll('.row input');if(inputs.length>=2)inputs[inputs.length-2].focus()},100)}function toast(msg){let n=document.createElement('div');n.className='toast';n.textContent='✓ '+msg;document.body.appendChild(n);setTimeout(()=>n.remove(),1800)}
-function pdfRowsForAccount(a){const r=[];(data[a].expense||[]).forEach(x=>r.push([x[0],N(x[1]),flag(x,'feedCommon')?'Transfert':'Mensuelle']));(data[a].variable||[]).forEach(x=>r.push([x[0],N(x[1]),'Variable']));(data[a].annual||[]).forEach(x=>r.push([x[0],N(x[1])/12,'Annuelle ÷ 12']));return r.filter(x=>x[1]!==0)}
-function buildPDFReport(){
- const [inc,exp]=all(),bal=inc-exp,cats=categoryTotals(),maxCat=Math.max(1,...Object.values(cats));
- const card=a=>{const[i,e,s]=totals(a);return `<div class="pdf-account"><h2>${esc(title(a))}</h2><div class="pdf-account-grid"><div>Revenus<b>${E(i)}</b></div><div>Dépenses<b>${E(e)}</b></div></div><div class="pdf-solde">Solde <b>${E(s)}</b></div></div>`};
- const table=a=>{const r=pdfRowsForAccount(a);return `<div class="pdf-box"><h3>${esc(title(a))}</h3>${r.length?`<table class="pdf-table"><thead><tr><th>Poste</th><th>Type</th><th>Montant</th></tr></thead><tbody>${r.map(x=>`<tr><td>${esc(x[0])}</td><td>${esc(x[2])}</td><td>${E(x[1])}</td></tr>`).join('')}</tbody></table>`:'<span>Aucune dépense.</span>'}</div>`};
- const bars=Object.entries(cats).filter(([,v])=>v>0).map(([k,v])=>`<div class="pdf-bar-row"><span>${esc(k)}</span><div class="pdf-bar-track"><div class="pdf-bar-fill" style="width:${Math.max(2,v/maxCat*100)}%"></div></div><span class="pdf-bar-value">${E(v)}</span></div>`).join('');
- document.getElementById('pdfReport').innerHTML=`<div class="pdf-top"><div><h1>Gestion compte AP-LC</h1><p>Rapport mensuel de synthèse</p></div><div class="pdf-date">${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
- <div class="pdf-summary"><div class="pdf-kpi"><span>Revenus du foyer</span><strong>${E(inc)}</strong></div><div class="pdf-kpi exp"><span>Dépenses réelles</span><strong>${E(exp)}</strong></div><div class="pdf-kpi bal"><span>Solde disponible</span><strong>${E(bal)}</strong></div></div>
- <h2 class="pdf-title">Synthèse des comptes</h2><div class="pdf-accounts">${card('u1')}${card('u2')}${card('common')}</div>
- <div class="pdf-two"><div class="pdf-box"><h3>Répartition des dépenses</h3>${bars||'Aucune dépense.'}</div><div class="pdf-box"><h3>Compte commun</h3><table class="pdf-table"><tbody><tr><td>${esc(data.names.u1)}</td><td>${E(commonPart('u1'))}</td></tr><tr><td>${esc(data.names.u2)}</td><td>${E(commonPart('u2'))}</td></tr><tr><td><b>Total versé</b></td><td><b>${E(commonFeed())}</b></td></tr><tr><td>Dépenses</td><td>${E(totals('common')[1])}</td></tr><tr><td><b>Solde</b></td><td><b>${E(totals('common')[2])}</b></td></tr></tbody></table></div></div>
- <h2 class="pdf-title">Détail mensuel</h2><div class="pdf-two">${table('u1')}${table('u2')}</div>${table('common')}
- <div class="pdf-note"><b>Calcul global :</b> les versements vers le compte commun sont des transferts internes et ne sont pas comptés deux fois. Les dépenses annuelles sont ramenées à leur équivalent mensuel.</div><div class="pdf-footer">Gestion compte AP-LC • Rapport généré depuis votre appareil</div>`;
+
+function pdfExpenseRows(a){
+  const out=[];
+  (data[a].expense||[]).forEach(x=>{const v=N(x[1]);if(v)out.push([x[0],v,flag(x,'feedCommon')?'Transfert interne':'Mensuelle'])});
+  (data[a].variable||[]).forEach(x=>{const v=N(x[1]);if(v)out.push([x[0],v,'Variable'])});
+  (data[a].annual||[]).forEach(x=>{const v=N(x[1])/12;if(v)out.push([x[0],v,'Annuelle ÷ 12'])});
+  return out;
 }
-function printPDF(){buildPDFReport();setTimeout(()=>window.print(),150)}
+function makePDFDocument(){
+  const [ri,de]=all(),solde=ri-de;
+  const cats=categoryTotals(), maxCat=Math.max(1,...Object.values(cats));
+  const card=a=>{const[i,e,s]=totals(a);return `<div class="account"><h3>${esc(title(a))}</h3><div class="nums"><span>Revenus<b>${E(i)}</b></span><span>Dépenses<b>${E(e)}</b></span></div><div class="balance">Solde <b>${E(s)}</b></div></div>`};
+  const table=a=>{const rr=pdfExpenseRows(a);return `<section class="detail"><h2>${esc(title(a))}</h2>${rr.length?`<table><thead><tr><th>Poste</th><th>Type</th><th>Mensuel</th></tr></thead><tbody>${rr.map(x=>`<tr><td>${esc(x[0])}</td><td>${esc(x[2])}</td><td>${E(x[1])}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">Aucune dépense renseignée.</p>'}</section>`};
+  const bars=Object.entries(cats).filter(([,v])=>v>0).map(([k,v])=>`<div class="barrow"><span>${esc(k)}</span><i><b style="width:${Math.max(3,v/maxCat*100)}%"></b></i><strong>${E(v)}</strong></div>`).join('');
+  const date=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Rapport AP-LC</title>
+<style>
+@page{size:A4 portrait;margin:12mm}
+*{box-sizing:border-box}html,body{margin:0;background:white;color:#243240;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+body{padding:0;font-size:10pt}.report{max-width:186mm;margin:auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;padding:0 0 6mm;border-bottom:2px solid #344d63}
+header h1{margin:0;font-size:21pt;color:#263e57}header p{margin:1.5mm 0 0;color:#77818a}.date{color:#77818a;font-size:9pt}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;margin:6mm 0}
+.kpi{padding:4mm;border:1px solid #dedbd5;border-radius:3mm;background:#faf9f6}.kpi small{display:block;color:#7b838a;text-transform:uppercase;font-size:7.5pt;letter-spacing:.04em}.kpi b{display:block;font-size:17pt;margin-top:1.5mm;color:#263e57}.kpi.exp b{color:#9a6250}.kpi.sol b{color:#55779a}
+h2{font-size:12pt;color:#263e57;margin:5mm 0 2.5mm}.accounts{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}.account{border:1px solid #dedbd5;border-radius:3mm;overflow:hidden;break-inside:avoid}.account h3{margin:0;padding:3mm;background:#f1efe9;font-size:10pt}.nums{display:grid;grid-template-columns:1fr 1fr;gap:2mm;padding:3mm}.nums span{font-size:7.5pt;color:#77818a}.nums b{display:block;color:#243240;font-size:10pt;margin-top:1mm}.balance{border-top:1px solid #ece8e1;padding:2.5mm 3mm;color:#77818a;font-size:8pt}.balance b{float:right;color:#263e57;font-size:10pt}
+.twocol{display:grid;grid-template-columns:1.05fr .95fr;gap:5mm;margin-top:5mm}.box{border:1px solid #dedbd5;border-radius:3mm;padding:4mm;break-inside:avoid}.box h2{margin:0 0 3mm}
+.barrow{display:grid;grid-template-columns:25mm 1fr 25mm;gap:2mm;align-items:center;margin:2.4mm 0;font-size:8pt}.barrow i{height:3.5mm;background:#ece9e3;border-radius:2mm;overflow:hidden}.barrow i b{display:block;height:100%;background:#718b7b}.barrow strong{text-align:right}
+table{width:100%;border-collapse:collapse;font-size:8.2pt}th{text-align:left;color:#7b838a;border-bottom:1px solid #d8d5cf;padding:2mm 1mm}th:last-child,td:last-child{text-align:right}td{padding:1.8mm 1mm;border-bottom:1px solid #eeece7}
+.detail{break-inside:avoid;margin-top:4mm;border:1px solid #dedbd5;border-radius:3mm;padding:3.5mm}.detail h2{margin:0 0 2mm}.note{margin-top:5mm;padding:3mm 4mm;background:#f7f5f1;border-radius:2.5mm;color:#6f777e;font-size:7.8pt;line-height:1.45}.muted{color:#7b838a}
+footer{border-top:1px solid #dedbd5;margin-top:5mm;padding-top:2.5mm;text-align:center;color:#92979c;font-size:7pt}
+.screenOnly{display:flex;justify-content:center;margin:7mm 0}.screenOnly button{border:0;border-radius:9px;background:#263e57;color:#fff;padding:12px 20px;font-size:16px;font-weight:700}
+@media print{.screenOnly{display:none!important}.report{max-width:none}body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+</style></head><body><main class="report">
+<header><div><h1>Gestion compte AP-LC</h1><p>Rapport mensuel</p></div><div class="date">${date}</div></header>
+<div class="summary"><div class="kpi"><small>Revenus du foyer</small><b>${E(ri)}</b></div><div class="kpi exp"><small>Dépenses réelles</small><b>${E(de)}</b></div><div class="kpi sol"><small>Solde disponible</small><b>${E(solde)}</b></div></div>
+<h2>Synthèse des comptes</h2><div class="accounts">${card('u1')}${card('u2')}${card('common')}</div>
+<div class="twocol"><div class="box"><h2>Répartition des dépenses</h2>${bars||'<p class="muted">Aucune dépense.</p>'}</div>
+<div class="box"><h2>Compte commun</h2><table><tbody><tr><td>${esc(data.names.u1)}</td><td>${E(commonPart('u1'))}</td></tr><tr><td>${esc(data.names.u2)}</td><td>${E(commonPart('u2'))}</td></tr><tr><td><b>Total versé</b></td><td><b>${E(commonFeed())}</b></td></tr><tr><td>Dépenses</td><td>${E(totals('common')[1])}</td></tr><tr><td><b>Solde</b></td><td><b>${E(totals('common')[2])}</b></td></tr></tbody></table></div></div>
+<h2>Détail mensuel</h2>${table('u1')}${table('u2')}${table('common')}
+<div class="note"><b>Calcul global :</b> les versements vers le compte commun sont des transferts internes. Ils restent visibles dans les comptes personnels mais ne sont pas comptés deux fois dans les dépenses du foyer. Les dépenses annuelles sont ramenées à leur équivalent mensuel.</div>
+<footer>Gestion compte AP-LC • Rapport généré depuis votre appareil</footer>
+<div class="screenOnly"><button onclick="window.print()">Créer / imprimer le PDF</button></div>
+</main></body></html>`;
+}
+function printPDF(){
+  const w=window.open('','_blank');
+  if(!w){alert("Safari a bloqué l'ouverture du rapport. Autorisez les fenêtres surgissantes puis réessayez.");return}
+  w.document.open();w.document.write(makePDFDocument());w.document.close();
+}
 
 function accountCategoryTotals(a){let cats={Logement:0,Alimentation:0,Transport:0,Loisirs:0,Autres:0};['expense','variable'].forEach(t=>(data[a][t]||[]).forEach(x=>{let l=String(x[0]).toLowerCase(),k=l.includes('logement')||l.includes('loyer')||l.includes('crédit')?'Logement':l.includes('aliment')||l.includes('course')?'Alimentation':l.includes('transport')||l.includes('essence')||l.includes('voiture')||l.includes('moto')?'Transport':l.includes('loisir')||l.includes('sortie')?'Loisirs':'Autres';cats[k]+=N(x[1])}));(data[a].annual||[]).forEach(x=>cats.Autres+=N(x[1])/12);return cats}
 function drawAccountCharts(a){let c=document.getElementById('donut-'+a);if(c){let[x,r]=setupCanvas(c),cats=accountCategoryTotals(a),labs=Object.keys(cats),vals=labs.map(k=>cats[k]),total=vals.reduce((q,v)=>q+v,0),colors=['#5aa4ff','#13a85b','#ff7a00','#8c3be8','#ff4f67'],cx=r.width*.27,cy=r.height*.52,R=Math.min(r.height*.34,r.width*.18),w=28;if(total<=0){x.strokeStyle='#d9e9fb';x.lineWidth=w;x.beginPath();x.arc(cx,cy,R,0,Math.PI*2);x.stroke()}else{let start=-Math.PI/2;vals.forEach((v,i)=>{if(v<=0)return;let ang=v/total*Math.PI*2;x.strokeStyle=colors[i];x.lineWidth=w;x.beginPath();x.arc(cx,cy,R,start,start+ang);x.stroke();start+=ang})}x.fillStyle='#10244a';x.font='700 19px system-ui';x.textAlign='center';x.fillText(E(total),cx,cy);x.font='13px system-ui';x.fillText('Total',cx,cy+22);x.textAlign='left';labs.forEach((l,i)=>{let y=42+i*38;x.fillStyle=colors[i];x.beginPath();x.arc(r.width*.57,y,6,0,7);x.fill();x.fillStyle='#263a5b';x.fillText(l,r.width*.61,y+5);x.textAlign='right';x.fillText(E(vals[i]),r.width-12,y+5);x.textAlign='left'})}
