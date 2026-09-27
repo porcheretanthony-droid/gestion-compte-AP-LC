@@ -269,7 +269,7 @@ input,select{color:var(--warm-ink)}
 
 
 
-</style></head><body><div class="wrap"><header class="header"><div class="brand"><div class="logo">▰</div><div><h1>Gestion compte AP-LC</h1><p>Pilotez simplement vos revenus, dépenses et comptes · PDF direct</p></div></div><button class="primary" onclick="openNewExpense()">＋ Nouvelle dépense</button></header><nav class="nav" id="nav"></nav><main><section id="dashboard" class="page on"></section><section id="u1" class="page"></section><section id="u2" class="page"></section><section id="common" class="page"></section><section id="settings" class="page"></section></main></div><div class="modal" id="modal" onclick="if(event.target===this)closeModal()"><div class="modalbox"><button class="close" onclick="closeModal()">✕</button><h2>Ajouter une dépense</h2><p class="hint">Choisissez le compte. Vous pourrez ensuite saisir le libellé et le montant.</p><div class="choices" id="choices"></div></div></div>
+</style></head><body><div class="wrap"><header class="header"><div class="brand"><div class="logo">▰</div><div><h1>Gestion compte AP-LC</h1><p>Pilotez simplement vos revenus, dépenses et comptes · PDF direct · design mat</p></div></div><button class="primary" onclick="openNewExpense()">＋ Nouvelle dépense</button></header><nav class="nav" id="nav"></nav><main><section id="dashboard" class="page on"></section><section id="u1" class="page"></section><section id="u2" class="page"></section><section id="common" class="page"></section><section id="settings" class="page"></section></main></div><div class="modal" id="modal" onclick="if(event.target===this)closeModal()"><div class="modalbox"><button class="close" onclick="closeModal()">✕</button><h2>Ajouter une dépense</h2><p class="hint">Choisissez le compte. Vous pourrez ensuite saisir le libellé et le montant.</p><div class="choices" id="choices"></div></div></div>
 <script>
 const blank=()=>({income:[['Salaire','0']],expense:[],variable:[],annual:[]});
 const fresh=()=>({version:5,names:{u1:'Utilisateur 1',u2:'Utilisateur 2'},
@@ -375,104 +375,151 @@ function pdfMoney(n){
   return sign+a[0]+','+a[1]+' EUR';
 }
 function createRealPDF(){
-  const W=595,H=842,M=42;
-  const navy=[0.149,0.243,0.341], ink=[0.12,0.17,0.22], muted=[0.42,0.46,0.50],
-        line=[0.86,0.84,0.81], soft=[0.972,0.965,0.945], sage=[0.44,0.55,0.48],
-        terra=[0.66,0.44,0.36], blue=[0.33,0.47,0.60];
-  const pages=[]; let ops=[], y=H-M;
-  const c=a=>a.join(' ');
-  const txt=(x,yy,s,size=10,bold=false,col=ink)=>ops.push(`BT /${bold?'F2':'F1'} ${size} Tf ${c(col)} rg 1 0 0 1 ${x} ${yy} Tm (${pdfEsc(s)}) Tj ET`);
-  const rect=(x,yy,w,h,fill=null,stroke=line)=>{if(fill)ops.push(`${c(fill)} rg ${x} ${yy} ${w} ${h} re f`);if(stroke)ops.push(`${c(stroke)} RG 0.7 w ${x} ${yy} ${w} ${h} re S`)};
-  const rule=(x1,yy1,x2,yy2,col=line,w=.7)=>ops.push(`${c(col)} RG ${w} w ${x1} ${yy1} m ${x2} ${yy2} l S`);
-  const newPage=()=>{if(ops.length)pages.push(ops.join('\n'));ops=[];y=H-M};
-  const need=h=>{if(y-h<M+18){newPage(); header(false)}};
-  const header=(first=true)=>{
-    txt(M,H-M,'Gestion compte AP-LC',first?22:14,true,navy);
-    txt(W-M-145,H-M+(first?2:0),new Date().toLocaleDateString('fr-FR'),9,false,muted);
-    if(first)txt(M,H-M-18,'Rapport financier mensuel',10,false,muted);
-    rule(M,H-M-(first?30:12),W-M,H-M-(first?30:12),navy,1.5);
-    y=H-M-(first?48:30);
+  const W=595,H=842,M=34;
+  const C={
+    navy:[0.15,0.24,0.34], ink:[0.12,0.17,0.22], muted:[0.39,0.44,0.49],
+    line:[0.86,0.85,0.82], paper:[0.985,0.98,0.965], shadow:[0.91,0.91,0.90],
+    blue:[0.34,0.47,0.59], blueSoft:[0.91,0.94,0.96],
+    sage:[0.43,0.55,0.48], sageSoft:[0.92,0.95,0.93],
+    terra:[0.64,0.43,0.36], terraSoft:[0.96,0.92,0.90],
+    sand:[0.67,0.57,0.45], sandSoft:[0.96,0.94,0.90],
+    plum:[0.48,0.43,0.55], plumSoft:[0.94,0.92,0.95]
   };
-  const section=t=>{need(30);txt(M,y,t,12,true,navy);y-=18};
-  const [inc,exp]=all(),bal=inc-exp;
-  header(true);
+  const ops=[]; const c=a=>a.join(' ');
+  const txt=(x,y,s,size=10,bold=false,col=C.ink)=>ops.push(`BT /${bold?'F2':'F1'} ${size} Tf ${c(col)} rg 1 0 0 1 ${x} ${y} Tm (${pdfEsc(s)}) Tj ET`);
+  const fill=(x,y,w,h,col)=>ops.push(`${c(col)} rg ${x} ${y} ${w} ${h} re f`);
+  const stroke=(x,y,w,h,col=C.line,lw=.6)=>ops.push(`${c(col)} RG ${lw} w ${x} ${y} ${w} ${h} re S`);
+  const line=(x1,y1,x2,y2,col=C.line,lw=.6)=>ops.push(`${c(col)} RG ${lw} w ${x1} ${y1} m ${x2} ${y2} l S`);
+  const card=(x,y,w,h,bg=C.paper,shadow=true)=>{
+    if(shadow) fill(x+2,y-2,w,h,C.shadow);
+    fill(x,y,w,h,bg); stroke(x,y,w,h,C.line,.45);
+  };
+  const money=n=>pdfMoney(n);
+  const [income,expense]=all(), balance=income-expense;
+  const date=new Date(), month=date.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const dateStr=date.toLocaleDateString('fr-FR');
 
-  // Three fixed summary cards.
-  const kpis=[['REVENUS DU FOYER',inc,sage],['DEPENSES REELLES',exp,terra],['SOLDE DISPONIBLE',bal,blue]];
-  const gap=10,cw=(W-2*M-2*gap)/3,ch=62;
-  kpis.forEach((k,i)=>{let x=M+i*(cw+gap);rect(x,y-ch,cw,ch,soft,line);txt(x+10,y-18,k[0],7,false,muted);txt(x+10,y-43,pdfMoney(k[1]),14,true,k[2])});
-  y-=ch+24;
+  // En-tête mat, sérieux, sans couleurs criardes.
+  fill(0,H-112,W,112,C.navy);
+  txt(M,H-52,'Gestion compte AP-LC',23,true,[1,1,1]);
+  txt(M,H-72,'Rapport financier mensuel',10,false,[0.88,0.91,0.94]);
+  card(W-178,H-78,144,34,[0.22,0.33,0.44],false);
+  txt(W-165,H-58,month.charAt(0).toUpperCase()+month.slice(1),10,true,[1,1,1]);
+  txt(W-166,H-91,'Genere le '+dateStr,7,false,[0.82,0.86,0.90]);
 
-  section('Synthese des comptes');
-  ['u1','u2','common'].forEach((a,i)=>{
-    const [ai,ae,as]=totals(a), x=M+i*(cw+gap), h=86;
-    rect(x,y-h,cw,h,[0.99,0.985,0.97],line);
-    rect(x,y-22,cw,22,soft,null); txt(x+9,y-15,title(a),10,true,navy);
-    txt(x+9,y-39,'Revenus',7,false,muted);txt(x+9,y-53,pdfMoney(ai),9,true,ink);
-    txt(x+cw/2+3,y-39,'Depenses',7,false,muted);txt(x+cw/2+3,y-53,pdfMoney(ae),9,true,ink);
-    rule(x+8,y-63,x+cw-8,y-63,line,.5);txt(x+9,y-78,'Solde',8,false,muted);txt(x+cw-74,y-78,pdfMoney(as),8,true,blue);
+  let y=H-137, gap=10, cw=(W-2*M-2*gap)/3, kh=66;
+  const kpis=[
+    ['REVENUS DU FOYER',income,C.sage,C.sageSoft],
+    ['DEPENSES TOTALES',expense,C.terra,C.terraSoft],
+    ['SOLDE GLOBAL',balance,C.blue,C.blueSoft]
+  ];
+  kpis.forEach((k,i)=>{
+    const x=M+i*(cw+gap); card(x,y-kh,cw,kh,k[3]);
+    txt(x+12,y-20,k[0],7,false,C.muted);
+    txt(x+12,y-47,money(k[1]),15,true,k[2]);
   });
-  y-=108;
+  y-=kh+28;
 
-  section('Compte commun');
-  const commonRows=[
+  txt(M,y,'Synthese des comptes',13,true,C.navy);
+  line(M+145,y-3,W-M,y-3,C.blue,.7); y-=18;
+  const accountColors={u1:[C.blue,C.blueSoft],u2:[C.sand,C.sandSoft],common:[C.plum,C.plumSoft]};
+  ['u1','u2','common'].forEach((a,i)=>{
+    const x=M+i*(cw+gap), h=102, [accent,bg]=accountColors[a], [ri,de,so]=totals(a);
+    card(x,y-h,cw,h,bg);
+    fill(x,y-25,cw,25,accent);
+    txt(x+10,y-17,title(a),9,true,[1,1,1]);
+    txt(x+10,y-43,'Revenus',7,false,C.muted); txt(x+10,y-59,money(ri),9,true,C.sage);
+    txt(x+cw/2+2,y-43,'Depenses',7,false,C.muted); txt(x+cw/2+2,y-59,money(de),9,true,C.terra);
+    fill(x+8,y-94,cw-16,25,C.blueSoft);
+    txt(x+15,y-84,'Solde',7,false,C.muted); txt(x+cw-78,y-84,money(so),9,true,C.blue);
+  });
+  y-=124;
+
+  // Compte commun + frais variables globaux.
+  const leftW=255, rightX=M+leftW+12, rightW=W-M-rightX, boxH=158;
+  txt(M,y,'Compte commun',12,true,C.navy);
+  txt(rightX,y,'Frais variables',12,true,C.navy); y-=12;
+  card(M,y-boxH,leftW,boxH,C.paper);
+  card(rightX,y-boxH,rightW,boxH,C.paper);
+  const cr=[
     [title('u1')+' - versement',commonPart('u1')],
     [title('u2')+' - versement',commonPart('u2')],
     ['Total des versements',commonFeed()],
     ['Depenses du compte commun',totals('common')[1]],
     ['Solde du compte commun',totals('common')[2]]
   ];
-  commonRows.forEach((r,i)=>{need(18); if(i===2||i===4)rect(M,y-14,W-2*M,17,soft,null);txt(M+7,y-10,r[0],8,i===2||i===4,ink);txt(W-M-100,y-10,pdfMoney(r[1]),8,true,i===4?blue:ink);y-=18});
-  y-=10;
-
-  section('Repartition des depenses');
-  const cats=categoryTotals(), maxCat=Math.max(1,...Object.values(cats));
-  Object.entries(cats).filter(([,v])=>v>0).forEach(([k,v])=>{
-    need(21);txt(M,y-9,k,8,false,ink);rect(M+88,y-12,255,8,[0.93,0.92,0.90],null);
-    rect(M+88,y-12,255*(v/maxCat),8,sage,null);txt(W-M-92,y-9,pdfMoney(v),8,true,ink);y-=20;
+  cr.forEach((r,i)=>{
+    const yy=y-27-i*25;
+    if(i===2||i===4) fill(M+8,yy-7,leftW-16,20,i===4?C.blueSoft:C.paper);
+    txt(M+13,yy,r[0],7.4,i===2||i===4,C.ink);
+    txt(M+leftW-77,yy,money(r[1]),7.4,true,i===4?C.blue:C.ink);
+    if(i<4) line(M+12,yy-9,M+leftW-12,yy-9,[0.92,0.91,0.89],.35);
   });
 
-  const accountTable=a=>{
-    newPage(); header(false); section('Detail mensuel - '+title(a));
-    const rows=pdfRowsForAccount(a);
-    txt(M,y,'Poste',8,true,muted);txt(M+270,y,'Type',8,true,muted);txt(W-M-95,y,'Montant',8,true,muted);y-=8;rule(M,y,W-M,y,line,.8);y-=12;
-    if(!rows.length){txt(M,y,'Aucune depense renseignee.',9,false,muted);y-=18}
-    rows.forEach(r=>{
-      need(22);
-      txt(M,y,r[0].slice(0,42),8,false,ink);txt(M+270,y,r[2],8,false,muted);txt(W-M-100,y,pdfMoney(r[1]),8,true,ink);
-      y-=9;rule(M,y,W-M,y,[0.92,0.91,0.89],.4);y-=10;
-    });
-    const [ai,ae,as]=totals(a); y-=6;rect(M,y-52,W-2*M,52,soft,line);
-    txt(M+10,y-17,'Revenus',7,false,muted);txt(M+10,y-34,pdfMoney(ai),10,true,sage);
-    txt(M+185,y-17,'Depenses',7,false,muted);txt(M+185,y-34,pdfMoney(ae),10,true,terra);
-    txt(M+360,y-17,'Solde',7,false,muted);txt(M+360,y-34,pdfMoney(as),10,true,blue);y-=68;
-  };
-  accountTable('u1'); accountTable('u2'); accountTable('common');
+  const varAll={};
+  ['u1','u2','common'].forEach(a=>(data[a].variable||[]).forEach(r=>{
+    const v=N(r[1]); if(v) varAll[r[0]]=(varAll[r[0]]||0)+v;
+  }));
+  const varEntries=Object.entries(varAll).sort((a,b)=>b[1]-a[1]);
+  const varTotal=varEntries.reduce((s,r)=>s+r[1],0);
+  txt(rightX+12,y-24,'Total du mois',7,false,C.muted);
+  txt(rightX+12,y-44,money(varTotal),13,true,C.navy);
+  const barCols=[C.blue,C.sage,C.sand,C.plum,C.terra];
+  varEntries.slice(0,4).forEach(([name,val],i)=>{
+    const yy=y-70-i*22, pct=varTotal?val/varTotal:0;
+    txt(rightX+12,yy,name.slice(0,20),7,false,C.ink);
+    fill(rightX+100,yy-2,rightW-155,6,[0.93,0.92,0.90]);
+    fill(rightX+100,yy-2,(rightW-155)*pct,6,barCols[i%barCols.length]);
+    txt(rightX+rightW-48,yy,money(val),6.8,true,C.ink);
+  });
+  if(!varEntries.length) txt(rightX+12,y-78,'Aucun frais variable renseigne.',8,false,C.muted);
+  y-=boxH+34;
 
-  need(55);rect(M,y-45,W-2*M,45,soft,null);
-  txt(M+10,y-15,'Note de calcul',8,true,navy);
-  txt(M+10,y-29,'Les versements au compte commun sont des transferts internes et ne sont pas comptes deux fois.',7,false,muted);
-  txt(M+10,y-39,'Les depenses annuelles sont ramenees a leur equivalent mensuel.',7,false,muted);
-  newPage();
+  // Uniquement le détail des FRAIS VARIABLES par utilisateur.
+  txt(M,y,'Frais variables par utilisateur',13,true,C.navy);
+  line(M+190,y-3,W-M,y-3,C.blue,.7); y-=18;
+  const uw=(W-2*M-gap)/2, uh=176;
+  ['u1','u2'].forEach((a,i)=>{
+    const x=M+i*(uw+gap), [accent,bg]=accountColors[a];
+    card(x,y-uh,uw,uh,bg);
+    fill(x,y-27,uw,27,accent);
+    txt(x+11,y-18,title(a),10,true,[1,1,1]);
+    const rows=(data[a].variable||[]).map(r=>[r[0],N(r[1])]).filter(r=>r[1]!==0);
+    const total=rows.reduce((s,r)=>s+r[1],0);
+    txt(x+uw-88,y-18,'Total '+money(total),7.2,true,[1,1,1]);
+    if(!rows.length){
+      txt(x+12,y-58,'Aucun frais variable ce mois-ci.',8,false,C.muted);
+    } else {
+      rows.slice(0,6).forEach((r,j)=>{
+        const yy=y-53-j*20, pct=total?Math.round(r[1]/total*100):0;
+        txt(x+12,yy,r[0].slice(0,23),7.5,false,C.ink);
+        txt(x+uw-92,yy,money(r[1]),7.5,true,C.ink);
+        txt(x+uw-35,yy,String(pct)+'%',7,false,C.muted);
+        fill(x+12,yy-9,uw-24,4,[0.91,0.90,0.88]);
+        fill(x+12,yy-9,(uw-24)*(total?r[1]/total:0),4,barCols[j%barCols.length]);
+      });
+    }
+  });
 
-  // Build a standards-compliant PDF with byte-safe ASCII streams.
+  // Pied de page.
+  line(M,31,W-M,31,C.blue,.7);
+  txt(M,18,'Gestion compte AP-LC  -  Rapport mensuel',7,false,C.muted);
+  txt(W-M-118,18,'Page 1 sur 1  -  '+dateStr,7,false,C.muted);
+
+  const stream=ops.join('\n');
   const objs=[null];
   const add=s=>{objs.push(s);return objs.length-1};
-  const font1=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  const font2=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
-  const pagesId=add('PAGES_PLACEHOLDER');
-  const pageIds=[];
-  pages.forEach(stream=>{
-    const sid=add(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
-    const pid=add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 ${font1} 0 R /F2 ${font2} 0 R >> >> /Contents ${sid} 0 R >>`);
-    pageIds.push(pid);
-  });
-  objs[pagesId]=`<< /Type /Pages /Kids [${pageIds.map(i=>i+' 0 R').join(' ')}] /Count ${pageIds.length} >>`;
+  const f1=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+  const f2=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+  const pagesId=add('PAGES');
+  const sid=add(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+  const pid=add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> >> /Contents ${sid} 0 R >>`);
+  objs[pagesId]=`<< /Type /Pages /Kids [${pid} 0 R] /Count 1 >>`;
   const catalog=add(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
   let pdf='%PDF-1.4\n%\xE2\xE3\xCF\xD3\n', offsets=[0];
   for(let i=1;i<objs.length;i++){offsets[i]=pdf.length;pdf+=`${i} 0 obj\n${objs[i]}\nendobj\n`}
-  const xref=pdf.length;pdf+=`xref\n0 ${objs.length}\n0000000000 65535 f \n`;
-  for(let i=1;i<objs.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  const xref=pdf.length; pdf+=`xref\n0 ${objs.length}\n0000000000 65535 f \n`;
+  for(let i=1;i<objs.length;i++) pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
   pdf+=`trailer\n<< /Size ${objs.length} /Root ${catalog} 0 R >>\nstartxref\n${xref}\n%%EOF`;
   return new Blob([new Uint8Array([...pdf].map(ch=>ch.charCodeAt(0)&255))],{type:'application/pdf'});
 }
