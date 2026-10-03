@@ -1,21 +1,16 @@
 {
-  "name": "Gestion compte AP-LC",
-  "short_name": "Compte AP-LC",
+  "id": "./",
+  "name": "Gestion budget",
+  "short_name": "Gestion budget",
+  "description": "Revenus, dépenses et comptes du foyer",
+  "lang": "fr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4f2ee",
-  "theme_color": "#263e57",
+  "theme_color": "#f4f2ee",
   "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ]
 }
